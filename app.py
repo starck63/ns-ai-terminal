@@ -46,7 +46,7 @@ col1,col2 = st.columns([1,2])
 # 패널
 # ---------------------------------
 
-panel_data = []
+panel = []
 
 for name,ticker in stocks.items():
 
@@ -60,9 +60,9 @@ for name,ticker in stocks.items():
 
     trend = "상승" if ma20 > ma60 else "중립"
 
-    panel_data.append({"종목":name,"추세":trend})
+    panel.append({"종목":name,"추세":trend})
 
-st.dataframe(panel_data)
+st.dataframe(panel)
 
 # ---------------------------------
 # 검색 + 차트
