@@ -46,24 +46,23 @@ col1,col2 = st.columns([1,2])
 # 패널
 # ---------------------------------
 
-with col1:
+panel_data = []
 
-    st.subheader("시장 패널")
+for name,ticker in stocks.items():
 
-    for name,ticker in stocks.items():
+    df = load_data(ticker)
 
-        df = load_data(ticker)
+    if df is None or len(df)==0:
+        continue
 
-        if df is None or len(df)==0:
-            continue
+    ma20 = df["Close"].rolling(20).mean().iloc[-1]
+    ma60 = df["Close"].rolling(60).mean().iloc[-1]
 
-        ma20 = df["Close"].rolling(20).mean().iloc[-1]
-        ma60 = df["Close"].rolling(60).mean().iloc[-1]
+    trend = "상승" if ma20 > ma60 else "중립"
 
-        trend = "상승" if ma20 > ma60 else "중립"
+    panel_data.append({"종목":name,"추세":trend})
 
-        st.write(f"{name} : {trend}")
-
+st.dataframe(panel_data)
 
 # ---------------------------------
 # 검색 + 차트
