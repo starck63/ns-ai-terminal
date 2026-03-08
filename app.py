@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
+
 st.title("NS AI TERMINAL")
 
 # -----------------------------
@@ -31,14 +32,24 @@ usa_watchlist = {
 }
 
 etf_watchlist = {
-"QQQ":"QQQ","SPY":"SPY","SOXX":"SOXX","SMH":"SMH","XLK":"XLK","TIGER200":"102110","KODEX200":"069500"
+"QQQ":"QQQ","SPY":"SPY","SOXX":"SOXX","SMH":"SMH","XLK":"XLK",
+"TIGER200":"102110","KODEX200":"069500"
 }
 
 # -----------------------------
-# DATA LOADER
+# KRX LIST CACHE
 # -----------------------------
 
-@st.cache_data
+@st.cache_data(ttl=86400)
+def get_krx():
+
+    return fdr.StockListing("KRX")
+
+# -----------------------------
+# DATA CACHE
+# -----------------------------
+
+@st.cache_data(ttl=3600)
 def load_data(ticker):
 
     try:
@@ -55,6 +66,7 @@ def load_data(ticker):
         return df
 
     except:
+
         return None
 
 # -----------------------------
@@ -131,22 +143,17 @@ def ai_analysis(df):
 6개월 수익률 : {round(change,2)} %
 
 기술적 추세 : {trend}
-
-MA20 / MA60 기준 분석입니다.
 """
 
 # -----------------------------
-# SEARCH (ONE INPUT)
+# SEARCH
 # -----------------------------
 
 query=st.text_input("종목 검색 (한국 이름 또는 미국 티커)")
 
 if query:
 
-    ticker=None
-    name=None
-
-    krx=fdr.StockListing("KRX")
+    krx=get_krx()
 
     res=krx[krx["Name"].str.contains(query)]
 
@@ -162,11 +169,7 @@ if query:
 
     df=load_data(ticker)
 
-    if df is None:
-
-        st.error("종목 데이터 없음")
-
-    else:
+    if df is not None:
 
         st.subheader(name)
 
