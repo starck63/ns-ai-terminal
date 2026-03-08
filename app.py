@@ -8,9 +8,9 @@ st.set_page_config(layout="wide")
 
 st.title("📈 NS AI 투자 터미널")
 
-# -------------------------
-# 한글 → 티커 변환
-# -------------------------
+# -----------------------------
+# 한글 → 티커 매핑
+# -----------------------------
 
 ticker_map = {
     "코카콜라":"KO",
@@ -23,9 +23,9 @@ ticker_map = {
     "SK하이닉스":"000660"
 }
 
-# -------------------------
-# 관심 종목
-# -------------------------
+# -----------------------------
+# 관심 종목 패널
+# -----------------------------
 
 watchlist = {
     "삼성전자":"005930",
@@ -36,21 +36,21 @@ watchlist = {
     "아마존":"AMZN"
 }
 
-# -------------------------
+# -----------------------------
 # 차트 기간 선택
-# -------------------------
+# -----------------------------
 
 period = st.selectbox(
     "차트 기간",
     ["3mo","6mo","1y","5y"]
 )
 
-# -------------------------
+# -----------------------------
 # 데이터 로딩
-# -------------------------
+# -----------------------------
 
 @st.cache_data
-def load_data(ticker):
+def load_data(ticker, period):
 
     try:
 
@@ -60,7 +60,7 @@ def load_data(ticker):
         else:
             df = yf.download(ticker, period=period)
 
-        if df is None or len(df) == 0:
+        if df is None or len(df)==0:
             return None
 
         return df
@@ -68,10 +68,9 @@ def load_data(ticker):
     except:
         return None
 
-
-# -------------------------
+# -----------------------------
 # 추세 계산
-# -------------------------
+# -----------------------------
 
 def calc_trend(df):
 
@@ -93,10 +92,9 @@ def calc_trend(df):
     except:
         return "중립"
 
-
-# -------------------------
+# -----------------------------
 # 차트 함수
-# -------------------------
+# -----------------------------
 
 def show_chart(df):
 
@@ -125,28 +123,27 @@ def show_chart(df):
 
     st.pyplot(fig)
 
-
-# -------------------------
+# -----------------------------
 # HeatMap
-# -------------------------
+# -----------------------------
 
 st.subheader("📊 시장 HeatMap")
 
 cols = st.columns(3)
 i = 0
 
-for name, ticker in watchlist.items():
+for name,ticker in watchlist.items():
 
-    df = load_data(ticker)
+    df = load_data(ticker, period)
 
     if df is None:
         continue
 
     trend = calc_trend(df)
 
-    color = "🟩" if trend == "상승" else "🟥"
+    color = "🟩" if trend=="상승" else "🟥"
 
-    cols[i].metric(label=name, value=color)
+    cols[i].metric(label=name,value=color)
 
     i += 1
 
@@ -154,18 +151,17 @@ for name, ticker in watchlist.items():
         cols = st.columns(3)
         i = 0
 
-
-# -------------------------
+# -----------------------------
 # AI 추천 종목
-# -------------------------
+# -----------------------------
 
 st.subheader("🔥 AI 추천 종목")
 
 recommend = []
 
-for name, ticker in watchlist.items():
+for name,ticker in watchlist.items():
 
-    df = load_data(ticker)
+    df = load_data(ticker, period)
 
     if df is None or len(df) < 60:
         continue
@@ -177,17 +173,15 @@ for name, ticker in watchlist.items():
 
     score = ma20 - ma60
 
-    recommend.append((name, score, ticker))
+    recommend.append((name,score,ticker))
 
-recommend.sort(key=lambda x: x[1], reverse=True)
+recommend.sort(key=lambda x:x[1],reverse=True)
 
 for r in recommend[:5]:
 
     if st.button("⭐ " + r[0]):
 
-        ticker = r[2]
-
-        df = load_data(ticker)
+        df = load_data(r[2], period)
 
         if df is not None:
 
@@ -195,10 +189,9 @@ for r in recommend[:5]:
 
             show_chart(df)
 
-
-# -------------------------
+# -----------------------------
 # 종목 검색
-# -------------------------
+# -----------------------------
 
 st.subheader("🔍 종목 검색")
 
@@ -208,7 +201,7 @@ if query:
 
     ticker = ticker_map.get(query, query).upper()
 
-    df = load_data(ticker)
+    df = load_data(ticker, period)
 
     if df is None:
 
@@ -224,18 +217,17 @@ if query:
 
         st.write("추세 :", trend)
 
-
-# -------------------------
+# -----------------------------
 # 패널 클릭 분석
-# -------------------------
+# -----------------------------
 
 st.subheader("📋 관심 종목 패널")
 
-for name, ticker in watchlist.items():
+for name,ticker in watchlist.items():
 
     if st.button(name):
 
-        df = load_data(ticker)
+        df = load_data(ticker, period)
 
         if df is None:
 
