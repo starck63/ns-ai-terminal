@@ -9,48 +9,46 @@ st.set_page_config(layout="wide")
 st.title("📈 NS AI 투자 터미널")
 
 # -----------------------------
-# 한글 → 티커 매핑
+# 한국 종목 40
 # -----------------------------
 
-ticker_map = {
-    "코카콜라":"KO",
-    "애플":"AAPL",
-    "엔비디아":"NVDA",
-    "테슬라":"TSLA",
-    "아마존":"AMZN",
-    "마이크로소프트":"MSFT",
-    "삼성전자":"005930",
-    "SK하이닉스":"000660"
+korea_watchlist = {
+"삼성전자":"005930","SK하이닉스":"000660","LG에너지솔루션":"373220","NAVER":"035420",
+"카카오":"035720","현대차":"005380","기아":"000270","POSCO홀딩스":"005490",
+"삼성SDI":"006400","셀트리온":"068270","두산에너빌리티":"034020","한화에어로스페이스":"012450",
+"LIG넥스원":"079550","현대로템":"064350","삼성바이오로직스":"207940","LG전자":"066570",
+"LG이노텍":"011070","대한항공":"003490","포스코퓨처엠":"003670","HD현대중공업":"329180",
+"한국전력":"015760","KT":"030200","CJ제일제당":"097950","삼성물산":"028260",
+"롯데케미칼":"011170","GS":"078930","S-Oil":"010950","DB하이텍":"000990",
+"한화솔루션":"009830","LG생활건강":"051900","에코프로":"086520","에코프로비엠":"247540",
+"엘앤에프":"066970","펄어비스":"263750","크래프톤":"259960","위메이드":"112040",
+"카카오게임즈":"293490","넷마블":"251270","한미반도체":"042700","ISC":"095340"
 }
 
 # -----------------------------
-# 관심 종목 패널
+# 미국 종목 15
 # -----------------------------
 
-watchlist = {
-    "삼성전자":"005930",
-    "SK하이닉스":"000660",
-    "엔비디아":"NVDA",
-    "애플":"AAPL",
-    "테슬라":"TSLA",
-    "아마존":"AMZN"
+usa_watchlist = {
+"NVDA":"NVDA","AMD":"AMD","AAPL":"AAPL","MSFT":"MSFT","AMZN":"AMZN",
+"GOOGL":"GOOGL","META":"META","TSLA":"TSLA","AVGO":"AVGO","NFLX":"NFLX",
+"SMCI":"SMCI","INTC":"INTC","ARM":"ARM","PLTR":"PLTR","TSM":"TSM"
 }
 
 # -----------------------------
-# 차트 기간 선택
+# ETF 5
 # -----------------------------
 
-period = st.selectbox(
-    "차트 기간",
-    ["3mo","6mo","1y","5y"]
-)
+etf_watchlist = {
+"QQQ":"QQQ","SPY":"SPY","SOXX":"SOXX","SMH":"SMH","XLK":"XLK"
+}
 
 # -----------------------------
 # 데이터 로딩
 # -----------------------------
 
 @st.cache_data
-def load_data(ticker, period):
+def load_data(ticker):
 
     try:
 
@@ -58,7 +56,7 @@ def load_data(ticker, period):
             df = fdr.DataReader(ticker)
 
         else:
-            df = yf.download(ticker, period=period)
+            df = yf.download(ticker, period="6mo")
 
         if df is None or len(df)==0:
             return None
@@ -74,167 +72,178 @@ def load_data(ticker, period):
 
 def calc_trend(df):
 
-    try:
-
-        if df is None or len(df) < 60:
-            return "중립"
-
-        close = df["Close"].squeeze()
-
-        ma20 = close.rolling(20).mean().iloc[-1]
-        ma60 = close.rolling(60).mean().iloc[-1]
-
-        if pd.isna(ma20) or pd.isna(ma60):
-            return "중립"
-
-        return "상승" if float(ma20) > float(ma60) else "중립"
-
-    except:
+    if df is None or len(df)<60:
         return "중립"
 
+    close=df["Close"].squeeze()
+
+    ma20=close.rolling(20).mean().iloc[-1]
+    ma60=close.rolling(60).mean().iloc[-1]
+
+    if pd.isna(ma20) or pd.isna(ma60):
+        return "중립"
+
+    return "상승" if ma20>ma60 else "중립"
+
 # -----------------------------
-# 차트 함수
+# 차트
 # -----------------------------
 
 def show_chart(df):
 
-    close = df["Close"].squeeze()
+    close=df["Close"].squeeze()
 
-    df["MA20"] = close.rolling(20).mean()
-    df["MA60"] = close.rolling(60).mean()
+    df["MA20"]=close.rolling(20).mean()
+    df["MA60"]=close.rolling(60).mean()
 
-    df["signal"] = 0
-    df.loc[df["MA20"] > df["MA60"], "signal"] = 1
-    df["cross"] = df["signal"].diff()
+    df["signal"]=0
+    df.loc[df["MA20"]>df["MA60"],"signal"]=1
+    df["cross"]=df["signal"].diff()
 
-    buy = df[df["cross"] == 1]
-    sell = df[df["cross"] == -1]
+    buy=df[df["cross"]==1]
+    sell=df[df["cross"]==-1]
 
-    fig, ax = plt.subplots()
+    fig,ax=plt.subplots()
 
-    ax.plot(close, label="Price")
-    ax.plot(df["MA20"], label="MA20")
-    ax.plot(df["MA60"], label="MA60")
+    ax.plot(close,label="Price")
+    ax.plot(df["MA20"],label="MA20")
+    ax.plot(df["MA60"],label="MA60")
 
-    ax.scatter(buy.index, buy["Close"], marker="^", color="green", s=100, label="BUY")
-    ax.scatter(sell.index, sell["Close"], marker="v", color="red", s=100, label="SELL")
+    ax.scatter(buy.index,buy["Close"],marker="^",color="green",s=100,label="BUY")
+    ax.scatter(sell.index,sell["Close"],marker="v",color="red",s=100,label="SELL")
 
     ax.legend()
 
     st.pyplot(fig)
 
 # -----------------------------
-# HeatMap
+# AI 분석
 # -----------------------------
 
-st.subheader("📊 시장 HeatMap")
+def ai_analysis(df):
 
-cols = st.columns(3)
-i = 0
+    close=df["Close"].squeeze()
 
-for name,ticker in watchlist.items():
+    last=close.iloc[-1]
 
-    df = load_data(ticker, period)
+    change=((last-close.iloc[0])/close.iloc[0])*100
 
-    if df is None:
-        continue
+    ma20=close.rolling(20).mean().iloc[-1]
+    ma60=close.rolling(60).mean().iloc[-1]
 
-    trend = calc_trend(df)
+    trend="상승 추세" if ma20>ma60 else "조정 구간"
 
-    color = "🟩" if trend=="상승" else "🟥"
+    return f"""
+현재 가격 : {round(last,2)}
 
-    cols[i].metric(label=name,value=color)
+6개월 수익률 : {round(change,2)} %
 
-    i += 1
+기술적 추세 : {trend}
 
-    if i == 3:
-        cols = st.columns(3)
-        i = 0
-
-# -----------------------------
-# AI 추천 종목
-# -----------------------------
-
-st.subheader("🔥 AI 추천 종목")
-
-recommend = []
-
-for name,ticker in watchlist.items():
-
-    df = load_data(ticker, period)
-
-    if df is None or len(df) < 60:
-        continue
-
-    close = df["Close"].squeeze()
-
-    ma20 = close.rolling(20).mean().iloc[-1]
-    ma60 = close.rolling(60).mean().iloc[-1]
-
-    score = ma20 - ma60
-
-    recommend.append((name,score,ticker))
-
-recommend.sort(key=lambda x:x[1],reverse=True)
-
-for r in recommend[:5]:
-
-    if st.button("⭐ " + r[0]):
-
-        df = load_data(r[2], period)
-
-        if df is not None:
-
-            st.subheader(f"{r[0]} 분석")
-
-            show_chart(df)
+MA20 / MA60 기준 분석 결과입니다.
+"""
 
 # -----------------------------
-# 종목 검색
+# 자동검색
 # -----------------------------
 
 st.subheader("🔍 종목 검색")
 
-query = st.text_input("종목 입력")
+search_list = (
+list(korea_watchlist.keys()) +
+list(usa_watchlist.keys()) +
+list(etf_watchlist.keys())
+)
 
-if query:
+sel = st.selectbox("패널 종목 선택", [""]+search_list)
 
-    ticker = ticker_map.get(query, query).upper()
+query = st.text_input("패널 외 종목 검색 (한국 이름 또는 미국 티커)")
 
-    df = load_data(ticker, period)
+ticker=None
+name=None
+
+if sel:
+    ticker=(korea_watchlist.get(sel) or
+            usa_watchlist.get(sel) or
+            etf_watchlist.get(sel))
+    name=sel
+
+elif query:
+
+    krx=fdr.StockListing("KRX")
+
+    res=krx[krx["Name"].str.contains(query)]
+
+    if len(res)>0:
+        ticker=res.iloc[0]["Code"]
+        name=res.iloc[0]["Name"]
+
+    else:
+        ticker=query.upper()
+        name=ticker
+
+if ticker:
+
+    df=load_data(ticker)
 
     if df is None:
 
-        st.error("데이터 없음")
+        st.error("종목 데이터 없음")
 
     else:
 
-        st.subheader(f"{query} 차트")
+        st.subheader(name)
 
         show_chart(df)
 
-        trend = calc_trend(df)
+        st.subheader("🤖 AI 분석")
 
-        st.write("추세 :", trend)
+        st.write(ai_analysis(df))
 
 # -----------------------------
-# 패널 클릭 분석
+# 패널 출력 함수
 # -----------------------------
 
-st.subheader("📋 관심 종목 패널")
+def draw_panel(title,watchlist):
 
-for name,ticker in watchlist.items():
+    st.subheader(title)
 
-    if st.button(name):
+    cols=st.columns(5)
 
-        df = load_data(ticker, period)
+    i=0
 
-        if df is None:
+    for name,ticker in watchlist.items():
 
-            st.error("데이터 없음")
+        df=load_data(ticker)
 
-        else:
+        trend=calc_trend(df) if df is not None else "중립"
 
-            st.subheader(f"{name} 분석")
+        icon="🔥" if trend=="상승" else "❄"
 
-            show_chart(df)
+        label=f"{name} {icon}"
+
+        if cols[i].button(label):
+
+            if df is not None:
+
+                st.subheader(name)
+
+                show_chart(df)
+
+                st.subheader("🤖 AI 분석")
+
+                st.write(ai_analysis(df))
+
+        i+=1
+
+        if i==5:
+            cols=st.columns(5)
+            i=0
+
+# -----------------------------
+# 패널 출력
+# -----------------------------
+
+draw_panel("🇰🇷 한국 종목",korea_watchlist)
+draw_panel("🇺🇸 미국 종목",usa_watchlist)
+draw_panel("📊 ETF",etf_watchlist)
