@@ -5,11 +5,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
-
-st.title("📈 NS AI 투자 터미널")
+st.title("NS AI TERMINAL")
 
 # -----------------------------
-# 한국 종목 40
+# WATCHLIST
 # -----------------------------
 
 korea_watchlist = {
@@ -25,26 +24,18 @@ korea_watchlist = {
 "카카오게임즈":"293490","넷마블":"251270","한미반도체":"042700","ISC":"095340"
 }
 
-# -----------------------------
-# 미국 종목 15
-# -----------------------------
-
 usa_watchlist = {
 "NVDA":"NVDA","AMD":"AMD","AAPL":"AAPL","MSFT":"MSFT","AMZN":"AMZN",
 "GOOGL":"GOOGL","META":"META","TSLA":"TSLA","AVGO":"AVGO","NFLX":"NFLX",
 "SMCI":"SMCI","INTC":"INTC","ARM":"ARM","PLTR":"PLTR","TSM":"TSM"
 }
 
-# -----------------------------
-# ETF 5
-# -----------------------------
-
 etf_watchlist = {
-"QQQ":"QQQ","SPY":"SPY","SOXX":"SOXX","SMH":"SMH","XLK":"XLK"
+"QQQ":"QQQ","SPY":"SPY","SOXX":"SOXX","SMH":"SMH","XLK":"XLK","TIGER200":"102110","KODEX200":"069500"
 }
 
 # -----------------------------
-# 데이터 로딩
+# DATA LOADER
 # -----------------------------
 
 @st.cache_data
@@ -56,7 +47,7 @@ def load_data(ticker):
             df = fdr.DataReader(ticker)
 
         else:
-            df = yf.download(ticker, period="6mo")
+            df = yf.download(ticker, period="1y")
 
         if df is None or len(df)==0:
             return None
@@ -67,13 +58,10 @@ def load_data(ticker):
         return None
 
 # -----------------------------
-# 추세 계산
+# TREND
 # -----------------------------
 
 def calc_trend(df):
-
-    if df is None or len(df)<60:
-        return "중립"
 
     close=df["Close"].squeeze()
 
@@ -86,10 +74,12 @@ def calc_trend(df):
     return "상승" if ma20>ma60 else "중립"
 
 # -----------------------------
-# 차트
+# CHART
 # -----------------------------
 
 def show_chart(df):
+
+    df=df.tail(126)
 
     close=df["Close"].squeeze()
 
@@ -109,18 +99,20 @@ def show_chart(df):
     ax.plot(df["MA20"],label="MA20")
     ax.plot(df["MA60"],label="MA60")
 
-    ax.scatter(buy.index,buy["Close"],marker="^",color="green",s=100,label="BUY")
-    ax.scatter(sell.index,sell["Close"],marker="v",color="red",s=100,label="SELL")
+    ax.scatter(buy.index,buy["Close"],marker="^",color="green",s=120,label="BUY")
+    ax.scatter(sell.index,sell["Close"],marker="v",color="red",s=120,label="SELL")
 
     ax.legend()
 
     st.pyplot(fig)
 
 # -----------------------------
-# AI 분석
+# AI ANALYSIS
 # -----------------------------
 
 def ai_analysis(df):
+
+    df=df.tail(126)
 
     close=df["Close"].squeeze()
 
@@ -140,49 +132,33 @@ def ai_analysis(df):
 
 기술적 추세 : {trend}
 
-MA20 / MA60 기준 분석 결과입니다.
+MA20 / MA60 기준 분석입니다.
 """
 
 # -----------------------------
-# 자동검색
+# SEARCH (ONE INPUT)
 # -----------------------------
 
-st.subheader("🔍 종목 검색")
+query=st.text_input("종목 검색 (한국 이름 또는 미국 티커)")
 
-search_list = (
-list(korea_watchlist.keys()) +
-list(usa_watchlist.keys()) +
-list(etf_watchlist.keys())
-)
+if query:
 
-sel = st.selectbox("패널 종목 선택", [""]+search_list)
-
-query = st.text_input("패널 외 종목 검색 (한국 이름 또는 미국 티커)")
-
-ticker=None
-name=None
-
-if sel:
-    ticker=(korea_watchlist.get(sel) or
-            usa_watchlist.get(sel) or
-            etf_watchlist.get(sel))
-    name=sel
-
-elif query:
+    ticker=None
+    name=None
 
     krx=fdr.StockListing("KRX")
 
     res=krx[krx["Name"].str.contains(query)]
 
     if len(res)>0:
+
         ticker=res.iloc[0]["Code"]
         name=res.iloc[0]["Name"]
 
     else:
+
         ticker=query.upper()
         name=ticker
-
-if ticker:
 
     df=load_data(ticker)
 
@@ -196,12 +172,12 @@ if ticker:
 
         show_chart(df)
 
-        st.subheader("🤖 AI 분석")
+        st.subheader("AI 분석")
 
         st.write(ai_analysis(df))
 
 # -----------------------------
-# 패널 출력 함수
+# PANEL
 # -----------------------------
 
 def draw_panel(title,watchlist):
@@ -230,20 +206,22 @@ def draw_panel(title,watchlist):
 
                 show_chart(df)
 
-                st.subheader("🤖 AI 분석")
+                st.subheader("AI 분석")
 
                 st.write(ai_analysis(df))
 
         i+=1
 
         if i==5:
+
             cols=st.columns(5)
+
             i=0
 
 # -----------------------------
-# 패널 출력
+# PANELS
 # -----------------------------
 
-draw_panel("🇰🇷 한국 종목",korea_watchlist)
-draw_panel("🇺🇸 미국 종목",usa_watchlist)
-draw_panel("📊 ETF",etf_watchlist)
+draw_panel("한국 종목",korea_watchlist)
+draw_panel("미국 종목",usa_watchlist)
+draw_panel("ETF",etf_watchlist)
