@@ -4,13 +4,13 @@ import FinanceDataReader as fdr
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="NS AI TERMINAL", layout="wide")
+st.set_page_config(layout="wide")
 
-st.title("📈 NS AI TERMINAL")
+st.title("📈 NS AI 투자 터미널")
 
-# -------------------------
-# 한글 → 티커 매핑
-# -------------------------
+# -----------------------------
+# 한글 → 티커 변환
+# -----------------------------
 
 ticker_map = {
     "코카콜라":"KO",
@@ -20,27 +20,25 @@ ticker_map = {
     "아마존":"AMZN",
     "마이크로소프트":"MSFT",
     "삼성전자":"005930",
-    "SK하이닉스":"000660",
-    "타이거200":"102110"
+    "SK하이닉스":"000660"
 }
 
-# -------------------------
+# -----------------------------
 # 관심 종목
-# -------------------------
+# -----------------------------
 
 watchlist = {
-    "타이거200":"102110",
     "삼성전자":"005930",
     "SK하이닉스":"000660",
-    "테슬라":"TSLA",
     "엔비디아":"NVDA",
     "애플":"AAPL",
+    "테슬라":"TSLA",
     "아마존":"AMZN"
 }
 
-# -------------------------
-# 데이터 로딩 함수
-# -------------------------
+# -----------------------------
+# 데이터 로딩
+# -----------------------------
 
 @st.cache_data
 def load_data(ticker):
@@ -51,85 +49,141 @@ def load_data(ticker):
             df = fdr.DataReader(ticker)
 
         else:
-            df = yf.download(ticker, period="1y")
-
-        if df is None or len(df)==0:
-            return None
+            df = yf.download(ticker,period="1y")
 
         return df
 
     except:
         return None
 
-
-# -------------------------
+# -----------------------------
 # 추세 계산
-# -------------------------
+# -----------------------------
 
-def get_trend(df):
+def calc_trend(df):
 
-    close = df["Close"]
-
-    ma20 = close.rolling(20).mean().iloc[-1]
-    ma60 = close.rolling(60).mean().iloc[-1]
+    ma20 = df["Close"].rolling(20).mean().iloc[-1]
+    ma60 = df["Close"].rolling(60).mean().iloc[-1]
 
     if ma20 > ma60:
-        return "🔥 상승"
+        return "상승"
     else:
-        return "❄ 중립"
+        return "중립"
 
+# -----------------------------
+# HeatMap 표시
+# -----------------------------
 
-# -------------------------
-# 검색
-# -------------------------
+st.subheader("📊 시장 HeatMap")
 
-query = st.text_input("종목 검색")
+cols = st.columns(3)
 
-if query:
-
-    ticker = ticker_map.get(query, query).upper()
-
-    df = load_data(ticker)
-
-    if df is None:
-
-        st.error("데이터를 불러올 수 없습니다. 코드 또는 종목을 확인해주세요.")
-
-    else:
-
-        st.subheader(f"📊 {query} 정밀 분석 차트")
-
-        fig, ax = plt.subplots()
-
-        ax.plot(df.index, df["Close"], label="Price")
-
-        ma20 = df["Close"].rolling(20).mean()
-        ma60 = df["Close"].rolling(60).mean()
-
-        ax.plot(df.index, ma20, label="MA20")
-        ax.plot(df.index, ma60, label="MA60")
-
-        ax.legend()
-
-        st.pyplot(fig)
-
-
-# -------------------------
-# 관심 종목 패널
-# -------------------------
-
-st.subheader("📋 관심 종목 현황")
+i = 0
 
 for name,ticker in watchlist.items():
 
     df = load_data(ticker)
 
     if df is None:
+        continue
 
-        st.write(f"{name} : 데이터 없음")
+    trend = calc_trend(df)
+
+    color = "🟩" if trend=="상승" else "🟥"
+
+    cols[i].metric(label=name,value=color)
+
+    i += 1
+
+    if i==3:
+        cols = st.columns(3)
+        i=0
+
+
+# -----------------------------
+# AI 추천 종목
+# -----------------------------
+
+st.subheader("🔥 AI 추천 종목")
+
+recommend = []
+
+for name,ticker in watchlist.items():
+
+    df = load_data(ticker)
+
+    if df is None:
+        continue
+
+    ma20 = df["Close"].rolling(20).mean().iloc[-1]
+    ma60 = df["Close"].rolling(60).mean().iloc[-1]
+
+    score = ma20 - ma60
+
+    recommend.append((name,score))
+
+recommend.sort(key=lambda x:x[1],reverse=True)
+
+for r in recommend[:5]:
+
+    st.write("⭐",r[0])
+
+
+# -----------------------------
+# 검색
+# -----------------------------
+
+st.subheader("🔍 종목 검색")
+
+query = st.text_input("종목 입력")
+
+if query:
+
+    ticker = ticker_map.get(query,query).upper()
+
+    df = load_data(ticker)
+
+    if df is None or len(df)==0:
+
+        st.error("데이터 없음")
 
     else:
 
-        trend = get_trend(df)
+        st.subheader(f"{query} 차트")
 
-        st.write(f"{name} : {trend}")
+        df["MA20"]=df["Close"].rolling(20).mean()
+        df["MA60"]=df["Close"].rolling(60).mean()
+
+        fig,ax = plt.subplots()
+
+        ax.plot(df["Close"],label="Price")
+        ax.plot(df["MA20"],label="MA20")
+        ax.plot(df["MA60"],label="MA60")
+
+        ax.legend()
+
+        st.pyplot(fig)
+
+        trend = calc_trend(df)
+
+        st.write("추세 :",trend)
+
+
+# -----------------------------
+# 관심 종목 패널
+# -----------------------------
+
+st.subheader("📋 관심 종목")
+
+for name,ticker in watchlist.items():
+
+    df = load_data(ticker)
+
+    if df is None:
+        continue
+
+    trend = calc_trend(df)
+
+    icon = "🔥" if trend=="상승" else "❄"
+
+    st.write(name,icon,trend)
